@@ -7,6 +7,7 @@ You're building **AI Gateway API**: a production-grade reverse proxy in front of
 This is a learning vehicle for the 11 skills listed in [project_description.md](project_structure/project_description.md#L7-L19) and, opportunistically, for several of the broader roadmap skills in [backend_skills.md](project_structure/backend_skills.md) that fall out naturally (testing, error handling, API docs, graceful shutdown, security, scalability).
 
 Audience profile for this plan (your answers):
+
 - **Rust level:** comfortable basics, new-ish to the tokio/tower/axum triangle — so each phase leads with the ecosystem concept before the code.
 - **Execution mode:** roadmap-only — you'll work each phase on your own and come back with questions; nothing in this plan assumes I'm typing alongside you.
 - **Testing rigor:** TDD-lite — tests land in the same phase as the feature, not a big catch-up pass at the end.
@@ -37,14 +38,16 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** prerequisites (rustfmt/clippy/pre-commit), #24 ADR (create the `docs/adr/` folder and write ADR `000-bootstrap.md`).
 
 **Concepts to learn first:**
+
 - Cargo workspaces vs single-crate layout — you're single-crate; don't over-engineer.
 - `rust-toolchain.toml` to pin the compiler version; why reproducibility matters.
 - `cargo-deny` vs `cargo-audit` — both are fine; `cargo-deny` is the superset.
 
 **Build steps:**
+
 1. Fix the crate name: `Cargo.toml` → `name = "ai-gateway"` (the `apai` typo will haunt you in logs otherwise). Bump `edition = "2024"` to `edition = "2021"` unless you have a reason — 2024 is fine but some of the async-fn-in-trait story is still settling.
 2. Add `rust-toolchain.toml` pinning stable.
-3. Create the folder layout from [ai_gateway_project_detail.html](project_structure/ai_gateway_project_detail.html) with empty `mod.rs` files so `cargo check` still passes.
+3. Create the folder layout from [ai_gateway_project_detail.md](./../project_structure/ai_gateway_project_detail.md) with empty `mod.rs` files so `cargo check` still passes.
 4. Add `rustfmt.toml` (max_width, imports_granularity = "Crate") and `clippy.toml` (msrv).
 5. Add a `justfile` with at minimum: `just fmt`, `just lint`, `just test`, `just run`, `just docker-build`.
 6. Add a `.pre-commit-config.yaml` running `cargo fmt --check`, `cargo clippy -- -D warnings`, and `typos`.
@@ -64,11 +67,13 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #15 error handling, #5 integration tests, groundwork for #1.
 
 **Concepts to learn first:**
+
 - Axum handlers are plain async fns. Arguments are **extractors**; the return value is **anything that impls `IntoResponse`**. Read the "extractor" and "IntoResponse" chapters of the Axum docs — do not skim.
 - `tower::Service<Request> → Response` is the abstraction Axum's router is built from. You don't need to implement `Service` yet, but know it exists.
 - Why a single `AppError` enum is the idiomatic move in Rust: `?` propagation + one central `IntoResponse` impl = consistent error envelopes for free.
 
 **Build steps:**
+
 1. Add deps: `axum`, `tokio` (full), `tower`, `tower-http` (trace, timeout), `serde`, `serde_json`, `thiserror`, `anyhow` (only for main.rs).
 2. `src/errors/mod.rs` — define `pub enum AppError` with variants `Internal(anyhow::Error)`, `BadRequest(String)`, `Unauthorized`, `RateLimited`, `Upstream(StatusCode, String)`, `NotFound`. `impl IntoResponse` mapping each to a JSON body `{"error": "...", "code": "..."}` and the right `StatusCode`. Add `pub type AppResult<T> = Result<T, AppError>`.
 3. `src/routes/health.rs` — `pub async fn ping() -> &'static str { "pong" }`. Stub readiness/liveness; real probes come in Phase 8.
@@ -76,6 +81,7 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 5. Don't add middleware yet — keep this phase dumb.
 
 **Tests (TDD-lite):**
+
 - `tests/integration/health.rs` using `axum-test::TestServer`. Assert `GET /ping` returns 200 + `"pong"`.
 - Unit test one `AppError` variant's `IntoResponse` to lock in the JSON shape.
 
@@ -90,10 +96,12 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #12 config management.
 
 **Concepts to learn first:**
+
 - `envy` deserializes env vars into a struct via serde. Nested structs use prefixes — read `envy::prefixed`.
 - `OnceCell`/`OnceLock` vs passing `Arc<Config>` through `axum::Extension` / `State`. Prefer `State` — it's the idiomatic path and keeps tests able to inject overrides.
 
 **Build steps:**
+
 1. `src/config.rs` — `#[derive(Debug, Deserialize, Clone)] pub struct Settings { pub server: ServerSettings, pub redis: RedisSettings, pub openai: ProviderSettings, pub anthropic: ProviderSettings, pub jwt: JwtSettings, pub otel: OtelSettings }`. Nested `...Settings` structs with sensible defaults via `#[serde(default)]`.
 2. `Settings::from_env() -> Result<Self, envy::Error>` — called once in `main.rs`.
 3. Wire `AppState { settings: Arc<Settings>, ... }` and pass with `Router::with_state`.
@@ -113,10 +121,12 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #11 observability (logging half), foundation for #1 middleware.
 
 **Concepts to learn first:**
+
 - `tracing` is not a logger — it's a structured diagnostics framework. `tracing-subscriber` turns events into output. Read "span vs event" until it clicks.
 - `tower_http::trace::TraceLayer` auto-emits a span per request; you customize `.make_span_with` to add the request id once Phase 4 generates one.
 
 **Build steps:**
+
 1. Add deps: `tracing`, `tracing-subscriber` (env-filter, json features), `tower-http` already in.
 2. `src/telemetry.rs` — `pub fn init(settings: &OtelSettings)` that installs a subscriber with a JSON layer + `EnvFilter::from_default_env()`. Return a guard if you adopt non-blocking later.
 3. Call `telemetry::init()` as the **first line** of `main` (before any `tracing::info!`).
@@ -135,11 +145,13 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #1 middleware (the big one — **order of execution** is the theme), foundation for everything that follows.
 
 **Concepts to learn first:**
+
 - `tower::Layer` is a factory: `Layer::layer(inner_service) -> wrapped_service`. The wrapped service is what actually runs per request.
 - Middleware order is **outermost-registered = outermost-executed**. `router.layer(A).layer(B)` means A wraps B wraps handler. Prove this to yourself with two `dbg!`-layers before moving on — this is roadmap #1's "critical" point.
 - For anything stateless, prefer `axum::middleware::from_fn` — it's 10 lines; full `Layer`/`Service` is for when you need a builder with config.
 
 **Build steps:**
+
 1. `src/middleware/request_id.rs` — implement as `axum::middleware::from_fn`. Pull `x-request-id` header if present & UUID-shaped, else generate a `uuid::Uuid::new_v4()`. Attach to the request's extensions and to the response headers.
 2. Update `TraceLayer` in `telemetry.rs` to pull request_id from extensions in `.make_span_with`.
 3. Mount `request_id` **before** `TraceLayer` so the span has access to the ID.
@@ -158,10 +170,12 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** trait design, foundation for streaming in Phase 6. Architecture skill #25 (lightly).
 
 **Concepts to learn first:**
+
 - `async fn` in traits is stable but using `Box<dyn Provider>` requires `#[async_trait]` or the `async-trait` crate for dyn compat. You need dyn dispatch because your router chooses at runtime — this is exactly what ADR 001 is about.
 - `reqwest::Client` is cheap to clone but expensive to create — one per process, stored in state.
 
 **Build steps:**
+
 1. Add deps: `reqwest` (json, stream, rustls-tls), `async-trait`, `bytes`, `futures` (for `Stream`).
 2. `src/providers/mod.rs`:
    ```rust
@@ -177,6 +191,7 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 5. Write ADR `001-provider-trait.md` — trait object vs enum dispatch, why extensibility wins even at the cost of one vtable indirection per request.
 
 **Tests:**
+
 - **Contract** test with `wiremock` for each provider: stub `/v1/chat/completions`, assert request body shape, return a canned response, assert the parsed `ChatResponse`.
 - **Unit** test router selection: given `model: "gpt-4o"`, the OpenAI impl wins; given `claude-3-opus`, Anthropic wins; given garbage, 400.
 
@@ -191,18 +206,21 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** advanced async/streams, core architectural skill for this project, #28 latency optimization.
 
 **Concepts to learn first:**
+
 - `futures::Stream` — read the signature and work through one hand-written impl. Understand `Pin<&mut Self>` and why it's there. You don't need to master it, but you should stop being afraid of it.
 - `reqwest::Response::bytes_stream()` returns `impl Stream<Item = Result<Bytes>>`.
 - Axum's `Body::from_stream` wraps any `Stream<Item = Result<Bytes, E>>` as a response body. For SSE specifically, `axum::response::sse::Sse::new(stream)` handles headers and keep-alives. **Decision point**: if upstream already sends SSE-formatted frames (OpenAI does), pass them through as a raw body — wrapping in `Sse` re-formats. If you want clean typed events, parse and re-emit via `Sse`. Start with raw pass-through; document the choice in a short note in `docs/adr/006-streaming-passthrough.md`.
 - **Backpressure** is free here: `reqwest` reads from the socket as fast as axum writes to the client. Don't `.collect()` — that defeats the entire point.
 
 **Build steps:**
+
 1. Extend the `Provider` trait with `async fn complete_stream(&self, req) -> AppResult<BoxStream<'static, AppResult<Bytes>>>`.
 2. Implement for OpenAI: call with `stream: true`, return `res.bytes_stream()` mapped to `AppResult<Bytes>`.
 3. Same for Anthropic — note their SSE event format differs; either pass raw and document the caveat, or normalize. Pass raw for v1.
 4. In the handler, branch on `request.stream`: buffered → existing path; streaming → return `Response::builder().header("content-type", "text/event-stream").body(Body::from_stream(stream))`.
 
 **Tests:**
+
 - Contract test with `wiremock` returning a chunked body; assert you receive ≥2 distinct chunks in the test client's stream (use `axum-test` + `.bytes_stream()` or a raw `hyper` client).
 - Manually `curl -N` against the running gateway with a real key to eyeball latency.
 
@@ -217,10 +235,12 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #3 auth, #20 security basics, ADR 003.
 
 **Concepts to learn first:**
+
 - RS256 vs HS256: gateways should never share the signing secret — they only need the **public key** to verify. That's the entire argument of ADR 003.
 - JWKS = JSON Web Key Set. Your auth provider (Auth0/Cognito/custom) publishes keys at `https://issuer/.well-known/jwks.json`. You fetch periodically, cache, and verify against the matching `kid`.
 
 **Build steps:**
+
 1. Add deps: `jsonwebtoken`, `moka` (for the JWKS cache with TTL), `serde`.
 2. `src/middleware/auth.rs` — `axum::middleware::from_fn_with_state`. Extract `Authorization: Bearer` → decode header → look up `kid` in cached JWKS → verify → insert `Claims` into request extensions. 401 on any failure with a clear reason (don't leak internals).
 3. `src/auth/jwks.rs` — `moka::future::Cache<String, DecodingKey>` with 10-minute TTL; miss fetches from JWKS URL.
@@ -229,6 +249,7 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 6. Write ADR `003-jwt-strategy.md`.
 
 **Tests:**
+
 - Spin up a test JWKS server with `wiremock`, sign tokens in-test with `jsonwebtoken::encode`, assert valid → 200, expired → 401, bad sig → 401, missing header → 401.
 - Verify the cache: count `wiremock` hits, assert second request doesn't re-fetch keys.
 
@@ -243,11 +264,13 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #9 caching, implicit #2 rate limiting, ADR 002.
 
 **Concepts to learn first:**
+
 - Fixed window vs sliding window: fixed is one `INCR`+`EXPIRE`, sliding is a sorted set where scores are timestamps. Fixed has edge-bursts at window boundaries; sliding doesn't. ADR 002 picks sliding and justifies the memory cost.
 - `deadpool-redis` pool sizing: start with `max_size = 2 × CPU cores`; tune after Phase 13 benchmarks (skill #19).
 - Cache-aside: read cache → miss → read DB/upstream → write cache → return. Never write-through for a gateway — invalidation becomes a nightmare.
 
 **Build steps:**
+
 1. Add deps: `deadpool-redis`, `redis` (tokio-comp).
 2. `src/cache/redis.rs` — pool setup, a `cache_aside<T>` generic helper with serde bounds.
 3. `src/middleware/rate_limit.rs` — Layer (or `from_fn_with_state`). Key = `rl:{sub}:{route}`. Logic: `ZADD key now now` → `ZREMRANGEBYSCORE key 0 now-window` → `ZCARD key`. If count > limit, 429 with `Retry-After` header; else continue. Do this as an atomic Lua script — `MULTI/EXEC` isn't atomic in cluster mode.
@@ -256,6 +279,7 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 6. Write ADR `002-rate-limit-algo.md`.
 
 **Tests:**
+
 - Integration test with `testcontainers-rs` spinning a real Redis. Send N+1 requests in a window; assert the N+1-th is 429. Send another after the window; assert 200.
 - Unit test the Lua script's return shape with a direct `redis-cli` script, kept in `tests/fixtures/rate_limit.lua`.
 
@@ -270,10 +294,12 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #11 observability (the hard half), #6 benchmarking groundwork.
 
 **Concepts to learn first:**
+
 - `metrics` crate + `metrics-exporter-prometheus` is the lightweight path. `opentelemetry` is the heavier, standards-compliant path for traces. They coexist fine — you use `metrics` for counters and OTel for spans.
 - Cardinality kills Prometheus: never include `request_id` or `user_id` as a label. Bucket by route template, method, status class.
 
 **Build steps:**
+
 1. Add deps: `metrics`, `metrics-exporter-prometheus`, `opentelemetry`, `opentelemetry-otlp`, `tracing-opentelemetry`.
 2. Extend `telemetry.rs` to also install the OTel layer (`tracing_opentelemetry::layer()`) exporting OTLP to `settings.otel.endpoint`.
 3. `src/middleware/metrics.rs` — record `http_requests_total{method,route,status}` counter and `http_request_duration_seconds{route}` histogram. Use the **matched route path**, not the raw URI (`axum::extract::MatchedPath`).
@@ -281,6 +307,7 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 5. Update `docker-compose.yml` to include Jaeger and Prometheus + a Grafana dashboard JSON under `ops/grafana/`.
 
 **Tests:**
+
 - Hit `/ping` in a test, then assert `/metrics` contains `http_requests_total{...} 1`.
 - OTel is hard to unit-test — skip it; verify manually in Jaeger.
 
@@ -295,11 +322,13 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #17 resilience.
 
 **Concepts to learn first:**
+
 - **Idempotency first, retries second.** Only retry on network errors or 5xx — never on 4xx. A retried non-idempotent POST can double-charge someone.
 - `tokio-retry` gives you `Retry::spawn(strategy, operation)`. `tower::retry::Retry` is the Service-level version; use the former for upstream HTTP calls, the latter only if you want retry to compose with the rest of the stack.
 - Circuit breaker: crates exist (`failsafe-rs`) but a hand-rolled `Arc<Mutex<State>>` with `Closed/Open/HalfOpen` is ~80 lines and teaches you more. For this project, build your own.
 
 **Build steps:**
+
 1. Add deps: `tokio-retry`.
 2. Wrap the `reqwest` call in each provider's `complete`/`complete_stream` with retry: 3 attempts, exponential backoff (100ms base, 2x, jitter).
 3. Add a `tower_http::timeout::TimeoutLayer` at the top of the stack: 60s for `/v1/chat/completions`, 5s for everything else (`Router::nest` two sub-routers).
@@ -319,11 +348,13 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #18 health checks.
 
 **Concepts to learn first:**
+
 - **Liveness** = "should Kubernetes restart me?" — keep dumb, no deps.
 - **Readiness** = "should traffic come to me?" — check every critical dep.
 - Don't let readiness check upstream LLM providers — their outages aren't yours.
 
 **Build steps:**
+
 1. Split `health.rs` into `live()` (returns 200 always) and `ready()` (pings Redis via the pool, 200 or 503).
 2. Neither is under auth. Both are under `TraceLayer` so you see them in logs, but exclude them from the Prometheus counter (use a path-aware filter) — otherwise readiness probes dominate your metrics.
 
@@ -340,10 +371,12 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #16 graceful shutdown.
 
 **Concepts to learn first:**
+
 - `tokio::signal::ctrl_c()` + Axum's `.with_graceful_shutdown(fut)` is the two-line version. For multi-signal (SIGTERM on Linux), use `tokio::signal::unix::signal(SignalKind::terminate())`.
-- `tokio_util::sync::CancellationToken` lets you signal *inside* handlers too — important for long-running streams.
+- `tokio_util::sync::CancellationToken` lets you signal _inside_ handlers too — important for long-running streams.
 
 **Build steps:**
+
 1. In `main.rs`, build a `CancellationToken`; spawn a signal listener that `token.cancel()`s on SIGTERM/SIGINT.
 2. Pass a child token into state so streaming handlers can short-circuit new upstream calls once shutdown starts (don't kill in-flight streams — let them finish).
 3. After `axum::serve(...).with_graceful_shutdown(token.cancelled())` returns, close the Redis pool (`pool.close()`) and the OTel provider (`shutdown_tracer_provider()`).
@@ -361,10 +394,12 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #23 versioning, #14 API docs.
 
 **Concepts to learn first:**
+
 - URL versioning (`/v1/chat`) vs header versioning (`Accept: application/vnd.api.v1+json`). URL wins for gateways — it's greppable, cacheable, easier to document. Write ADR `007-api-versioning.md`.
 - `utoipa` derives OpenAPI from your handler signatures + Pydantic-style schema structs.
 
 **Build steps:**
+
 1. Add deps: `utoipa`, `utoipa-swagger-ui`.
 2. Annotate request/response structs with `#[derive(ToSchema)]` and handlers with `#[utoipa::path(...)]`.
 3. Mount `SwaggerUi::new("/docs").url("/api-doc/openapi.json", ApiDoc::openapi())`.
@@ -383,10 +418,12 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #7 containerization.
 
 **Concepts to learn first:**
+
 - `cargo-chef` splits the build into a "cook deps" stage that's cached separately from your source — the difference between 8-minute and 30-second rebuilds.
 - `distroless/cc` or `gcr.io/distroless/static` runtime images — small, no shell, safer. If you're using `rustls` + pure Rust TLS, `distroless/static` works.
 
 **Build steps:**
+
 1. Stage 1 (`planner`): `cargo chef prepare --recipe-path recipe.json`.
 2. Stage 2 (`cacher`): `cargo chef cook --release --recipe-path recipe.json`.
 3. Stage 3 (`builder`): copy source + build the actual binary.
@@ -407,10 +444,12 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #6 benchmarking, #8 profiling, foundation for #19 connection pool tuning.
 
 **Concepts to learn first:**
+
 - k6 scripts are JS. Write one scenario for `POST /v1/chat/completions` with a `wiremock` upstream to remove external variance.
 - `cargo-flamegraph` wraps `perf` (Linux) or `dtrace` (macOS). On macOS you need to disable SIP for `dtrace` — or run the flamegraph pass inside a Linux container.
 
 **Build steps:**
+
 1. `tests/load/chat.k6.js` — 100 VUs, 60s, ramp. Output JSON to `tests/load/results/`.
 2. Add `just bench` and `just flamegraph` targets.
 3. Run once, write `docs/perf/baseline.md` with p50/p95/p99 numbers. This is your "before" snapshot; revisit after Phase 16.
@@ -428,6 +467,7 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 **Skills:** #20 security basics, #24 ADRs, implicit #5 testing in CI.
 
 **Build steps:**
+
 1. `cargo-audit` in CI (GitHub Actions or whatever you use). Block merges on `RUSTSEC-*` advisories.
 2. `cargo-deny` config banning duplicate deps, yanked versions, forbidden licenses.
 3. CI pipeline: `fmt --check → clippy -D warnings → test → audit → docker build`.

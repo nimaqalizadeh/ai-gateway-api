@@ -5,38 +5,54 @@
 ```
 ai-gateway/
 ├── src/
-│   ├── main.rs           # server boot, signal handler
-│   ├── config.rs         # envy + serde settings
+│   ├── main.rs              # server boot, signal handler
+│   ├── config.rs            # envy + serde settings
+│   ├── telemetry.rs         # tracing + OTEL init
+│   ├── errors.rs            # AppError → HTTP status
+│   ├── middleware.rs        # declares middleware submodules
 │   ├── middleware/
-│   │   ├── auth.rs       # JWT RS256 tower layer
-│   │   ├── rate_limit.rs # Redis sliding window
+│   │   ├── auth.rs          # JWT RS256 tower layer
+│   │   ├── rate_limit.rs    # Redis sliding window
 │   │   ├── request_id.rs
-│   │   └── metrics.rs    # Prometheus counters
+│   │   └── metrics.rs       # Prometheus counters
+│   ├── routes.rs            # declares route submodules
 │   ├── routes/
-│   │   ├── v1/
-│   │   │   ├── chat.rs   # POST /v1/chat/completions
-│   │   │   └── models.rs
-│   │   └── health.rs     # readiness + liveness
+│   │   ├── health.rs        # readiness + liveness
+│   │   ├── v1.rs            # declares v1 submodules
+│   │   └── v1/
+│   │       ├── chat.rs      # POST /v1/chat/completions
+│   │       └── models.rs
+│   ├── providers.rs         # Provider trait + submodule declarations
 │   ├── providers/
-│   │   ├── mod.rs        # Provider trait
 │   │   ├── openai.rs
 │   │   └── anthropic.rs
-│   ├── cache/
-│   │   └── redis.rs      # cache-aside helpers
-│   ├── errors/
-│   │   └── mod.rs        # AppError → HTTP status
-│   └── telemetry.rs      # tracing + OTEL init
+│   ├── cache.rs             # declares cache submodules
+│   └── cache/
+│       └── redis.rs         # cache-aside helpers
 ├── tests/
 │   ├── integration/
-│   └── contract/         # wiremock stubs
-├── docs/adr/
-│   ├── 001-provider-trait.md
-│   ├── 002-rate-limit-algo.md
-│   └── 003-jwt-strategy.md
-├── Makefile
+│   └── contract/            # wiremock stubs
+├── docs/
+│   ├── roadmap.md
+│   └── adr/
+│       ├── 000-bootstrap.md
+│       ├── 001-provider-trait.md
+│       ├── 002-rate-limit-algo.md
+│       └── 003-jwt-strategy.md
+├── project_structure/       # reference docs for this project
+├── Cargo.toml
+├── Cargo.lock
+├── rust-toolchain.toml      # pins compiler version + components
+├── rustfmt.toml
+├── clippy.toml
+├── justfile                 # task runner (fmt, lint, test, run)
+├── .pre-commit-config.yaml
+├── .gitignore
 ├── Dockerfile
 └── docker-compose.yml
 ```
+
+> Uses the modern (edition 2018+) module layout — a `foo.rs` file paired with a `foo/` folder, instead of `foo/mod.rs`. Fewer ambiguously-named tabs in your editor; module name matches file name.
 
 ## Core crates
 
