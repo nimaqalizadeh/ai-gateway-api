@@ -4,7 +4,7 @@
 
 You're building **AI Gateway API**: a production-grade reverse proxy in front of OpenAI and Anthropic. It streams completions back to callers, enforces per-key quotas via Redis, authenticates clients with RS256 JWTs, and exports OpenTelemetry traces. The repo today is an empty `cargo new` (`src/main.rs` prints hello; `Cargo.toml` has a typo in the crate name — `ai-gateway-apai`).
 
-This is a learning vehicle for the 11 skills listed in [project_description.md](project_structure/project_description.md#L7-L19) and, opportunistically, for several of the broader roadmap skills in [backend_skills.md](project_structure/backend_skills.md) that fall out naturally (testing, error handling, API docs, graceful shutdown, security, scalability).
+This is a learning vehicle for the 11 skills listed in [overview.md](overview.md#L7-L19) and, opportunistically, for several of the broader roadmap skills in [backend_skills.md](backend_skills.md) that fall out naturally (testing, error handling, API docs, graceful shutdown, security, scalability).
 
 Audience profile for this plan (your answers):
 
@@ -47,7 +47,7 @@ Commit at the end of every phase. Tag phases you might want to revisit (`git tag
 
 1. Fix the crate name: `Cargo.toml` → `name = "ai-gateway"` (the `apai` typo will haunt you in logs otherwise). Bump `edition = "2024"` to `edition = "2021"` unless you have a reason — 2024 is fine but some of the async-fn-in-trait story is still settling.
 2. Add `rust-toolchain.toml` pinning stable.
-3. Create the folder layout from [ai_gateway_project_detail.md](./../project_structure/ai_gateway_project_detail.md) with empty `mod.rs` files so `cargo check` still passes.
+3. Create the folder layout from [project_structure.md](./project_structure.md) with empty `mod.rs` files so `cargo check` still passes.
 4. Add `rustfmt.toml` (max_width, imports_granularity = "Crate") and `clippy.toml` (msrv).
 5. Add a `justfile` with at minimum: `just fmt`, `just lint`, `just test`, `just run`, `just docker-build`.
 6. Add a `.pre-commit-config.yaml` running `cargo fmt --check`, `cargo clippy -- -D warnings`, and `typos`.
