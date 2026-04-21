@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "ai-gateway-apai"
+name = "ai-gateway"
 version = "0.1.0"
