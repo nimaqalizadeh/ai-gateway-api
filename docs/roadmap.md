@@ -2,7 +2,7 @@
 
 ## Context
 
-You're building **AI Gateway API**: a production-grade reverse proxy in front of OpenAI and Anthropic. It streams completions back to callers, enforces per-key quotas via Redis, authenticates clients with RS256 JWTs, and exports OpenTelemetry traces. The repo today is an empty `cargo new` (`src/main.rs` prints hello; `Cargo.toml` has a typo in the crate name — `ai-gateway-apai`).
+You're building **AI Gateway API**: a production-grade reverse proxy in front of OpenAI and Anthropic. It streams completions back to callers, enforces per-key quotas via Redis, authenticates clients with RS256 JWTs, and exports OpenTelemetry traces. The repo today is an empty `cargo new` (`src/main.rs` prints hello).
 
 This is a learning vehicle for the 11 skills listed in [overview.md](overview.md#L7-L19) and, opportunistically, for several of the broader roadmap skills in [backend_skills.md](backend_skills.md) that fall out naturally (testing, error handling, API docs, graceful shutdown, security, scalability).
 
