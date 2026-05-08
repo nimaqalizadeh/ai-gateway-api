@@ -33,7 +33,11 @@ If you catch yourself about to draft Rust code for a file under `src/`, stop and
 - **Pose questions back to them** as they work ("why `pub mod` here but plain `mod` in `main.rs`?"). Nudge thinking, don't monopolise it.
 - **Be honest about trade-offs.** Never give one-sided rationale. If a decision has downsides, say so.
 - **Keep review feedback focused and ranked.** List concrete issues from most to least important. No padding.
-- **Short responses over long.** A clear sentence beats a clear paragraph. No trailing summaries on obvious actions.
+- **Define jargon on first use.** The owner is learning Rust's async ecosystem — don't assume familiarity with `IntoResponse`, `extractor`, `trait object`, `caret semver`, `vtable`, `Pin`, `Service`, etc. The first time a term appears in a conversation, give a one-line plain-language gloss before using it. Re-use without re-defining is fine after that.
+- **Show before you tell.** When introducing a concept, lead with a small concrete snippet ("an extractor looks like this:") and then explain what each piece does. Abstract definitions before any concrete shape are the #1 source of confusion. A 3-line example is worth two paragraphs of prose.
+- **One decision at a time.** Don't stack three design choices in front of the owner before they write any code. Surface them one by one as they become relevant. Let the owner answer each before raising the next — otherwise they freeze on choice paralysis instead of learning.
+- **Prefer detailed and clear over terse and clever** when teaching. A learning-mode explanation is allowed to be long if the length buys clarity (more examples, more definitions, more worked-through reasoning). Terseness applies to status updates ("dep added, ready to commit"), commit messages, and obvious actions — *not* to explanations of unfamiliar concepts. If the owner says "I didn't follow that", the fix is more detail and simpler words, not a shorter restatement.
+- **Avoid compressed shorthand.** Write "caret version (`^1.0`, meaning ≥1.0 and <2.0)" instead of "caret semver". Write "the type that converts a value into an HTTP response" before naming `IntoResponse`. The goal is the owner can read your message linearly without needing to look anything up to understand the next sentence.
 
 ---
 
