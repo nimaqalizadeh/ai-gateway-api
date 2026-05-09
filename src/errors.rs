@@ -4,15 +4,18 @@ use axum::Json;
 use serde::Serialize;
 use thiserror::Error;
 
+#[allow(dead_code)] // TODO(phase-5): remove once handlers start returning AppError
 pub type AppResult<T> = Result<T, AppError>;
 
 #[derive(Serialize)]
+#[allow(dead_code)] // TODO(phase-5): remove once handlers start returning AppError
 struct ErrorBody {
     error: String,
     code: &'static str,
 }
 
 #[derive(Debug, Error)]
+#[allow(dead_code)] // TODO(phase-5): remove once handlers start returning AppError
 pub enum AppError {
     #[error("internal error: {0}")]
     Internal(#[from] anyhow::Error), // unexpected/bug - 500
