@@ -86,3 +86,21 @@ impl IntoResponse for AppError {
         (status, Json(body)).into_response()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn unauthorized_into_response_has_correct_shape() {
+        let response = AppError::Unauthorized.into_response();
+        let status = response.status();
+        let body = response.into_body();
+        let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(json["code"], "unauthorized");
+        assert_eq!(json["error"], "missing or invalid token");
+    }
+}
