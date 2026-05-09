@@ -16,3 +16,6 @@ anyhow = "1"
 [lints.clippy]
 all = "warn"
 pedantic = "warn"
+
+[dev-dependencies]
+axum-test = "20.0.0"
