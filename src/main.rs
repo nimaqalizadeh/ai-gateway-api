@@ -1,11 +1,12 @@
-use ai_gateway::app;
-
-const ADDR: &str = "0.0.0.0:8080";
+use ai_gateway::{app, AppState, Settings};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let listener = tokio::net::TcpListener::bind(ADDR).await?;
-    println!("listening on http://{ADDR}");
-    axum::serve(listener, app()).await?;
+    let settings = envy::from_env::<Settings>()?;
+    let bind = settings.bind;
+    let state = AppState { settings };
+    let listener = tokio::net::TcpListener::bind(bind).await?;
+    println!("listening on http://{bind}");
+    axum::serve(listener, app(state)).await?;
     Ok(())
 }
